@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f5f8f8">
+<title>PulseNote｜心率紀錄與趨勢觀察</title>
+<style>
+  :root {
+    --bg: #f5f8f8;
+    --surface: #ffffff;
+    --text: #243238;
+    --muted: #687980;
+    --line: #e1e9e9;
+    --primary: #287f7b;
+    --primary-dark: #206965;
+    --primary-soft: #e7f4f2;
+    --warning: #8b5b12;
+    --warning-bg: #fff6e4;
+    --danger: #a83333;
+    --danger-bg: #fff0f0;
+    --shadow: 0 8px 26px rgba(31, 61, 65, .055);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    line-height: 1.6;
+  }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  .app { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 44px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center;
+    background: var(--primary-soft); color: var(--primary); font-size: 25px; font-weight: 800;
+  }
+  h1 { margin: 0; font-size: clamp(1.25rem, 3vw, 1.7rem); letter-spacing: -.035em; }
+  .subtitle { color: var(--muted); font-size: .91rem; margin-top: 2px; }
+  .privacy-pill { color: var(--primary-dark); background: var(--primary-soft); padding: 7px 12px; border-radius: 999px; font-size: .82rem; white-space: nowrap; }
+  .welcome { margin: 0 0 20px; }
+  .welcome h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  .welcome p { color: var(--muted); margin: 0; font-size: .93rem; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; margin-bottom: 18px; }
+  .stat, .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .stat { padding: 19px 20px; }
+  .stat-label { color: var(--muted); font-size: .86rem; display: flex; align-items: center; gap: 7px; }
+  .stat-value { font-size: clamp(1.65rem, 4vw, 2.15rem); font-weight: 750; letter-spacing: -.04em; margin-top: 7px; line-height: 1.2; }
+  .stat-value small { font-size: .85rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .stat-note { font-size: .79rem; color: var(--muted); margin-top: 7px; }
+  .layout { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 18px; align-items: start; }
+  .panel { padding: 22px; margin-bottom: 18px; min-width: 0; }
+  .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+  .panel-heading h2 { margin: 0; font-size: 1.08rem; }
+  .panel-heading p { color: var(--muted); font-size: .85rem; margin: 4px 0 0; }
+  .section-icon { color: var(--primary); font-size: 1.2rem; margin-right: 6px; }
+  .field { margin-bottom: 14px; }
+  label { display: block; font-size: .88rem; font-weight: 650; margin-bottom: 6px; }
+  input, select {
+    width: 100%; border: 1px solid #d6e0e0; border-radius: 11px; background: #fff;
+    color: var(--text); padding: 11px 12px; outline: none; min-height: 45px;
+  }
+  input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(40,127,123,.12); }
+  .field-hint { color: var(--muted); font-size: .77rem; margin-top: 5px; }
+  .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .primary-btn, .secondary-btn, .danger-btn {
+    border: 0; border-radius: 11px; padding: 11px 15px; font-weight: 700; transition: .15s ease;
+  }
+  .primary-btn { color: white; background: var(--primary); width: 100%; min-height: 46px; }
+  .primary-btn:hover { background: var(--primary-dark); }
+  .secondary-btn { color: var(--primary-dark); background: var(--primary-soft); }
+  .secondary-btn:hover { filter: brightness(.97); }
+  .danger-btn { color: var(--danger); background: var(--danger-bg); padding: 7px 10px; font-size: .8rem; }
+  .message { display: none; padding: 11px 13px; border-radius: 11px; font-size: .86rem; margin: 0 0 14px; }
+  .message.show { display: block; }
+  .message.error { color: var(--danger); background: var(--danger-bg); }
+  .message.success { color: var(--primary-dark); background: var(--primary-soft); }
+  .reminder { border-radius: 14px; padding: 15px; border: 1px solid var(--line); background: #f8fbfb; }
+  .reminder.neutral { background: #f3f8f8; border-color: #dcebea; }
+  .reminder.caution { background: var(--warning-bg); border-color: #f0dfb8; }
+  .reminder.alert { background: var(--danger-bg); border-color: #f2d1d1; }
+  .reminder-title { font-weight: 750; display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .reminder p { font-size: .86rem; margin: 0; color: #48575b; }
+  .reminder .small-note { font-size: .77rem; color: var(--muted); margin-top: 8px; }
+  .reference { margin-top: 13px; border-top: 1px solid rgba(100,120,120,.17); padding-top: 12px; font-size: .82rem; }
+  .reference strong { display: block; margin-bottom: 3px; }
+  .chart-wrap { position: relative; width: 100%; height: 245px; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .chart-legend { color: var(--muted); font-size: .78rem; margin-top: 4px; }
+  .chart-empty { color: var(--muted); font-size: .9rem; text-align: center; padding: 35px 12px; }
+  .history-list { display: grid; gap: 9px; }
+  .record {
+    display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; align-items: center;
+    border: 1px solid var(--line); border-radius: 13px; padding: 12px 13px;
+  }
+  .record-main { min-width: 0; }
+  .record-top { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .record-bpm { font-size: 1.3rem; font-weight: 750; letter-spacing: -.03em; }
+  .record-bpm small { font-size: .75rem; color: var(--muted); font-weight: 500; }
+  .record-date { color: var(--muted); font-size: .79rem; }
+  .record-status { color: #52666a; font-size: .8rem; margin-top: 2px; }
+  .record-actions { display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: .72rem; border-radius: 999px; padding: 3px 8px; background: #edf3f3; color: #52666a; }
+  .empty { border: 1px dashed #cbd9d9; color: var(--muted); padding: 25px 15px; text-align: center; border-radius: 13px; font-size: .9rem; }
+  .history-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 13px; }
+  .history-toolbar span { font-size: .82rem; color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: .78rem; padding: 12px 8px 0; }
+  .disclaimer { margin-top: 18px; font-size: .81rem; color: var(--muted); background: #edf2f2; border-radius: 12px; padding: 13px 15px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  @media (max-width: 780px) {
+    .layout { grid-template-columns: 1fr; gap: 0; }
+    .stats { gap: 9px; }
+    .stat { padding: 14px 13px; }
+    .stat-label { font-size: .77rem; }
+    .stat-note { font-size: .72rem; }
+    .panel { padding: 18px; }
+  }
+  @media (max-width: 460px) {
+    .app { width: min(100% - 22px, 1120px); padding-top: 18px; }
+    header { align-items: flex-start; }
+    .privacy-pill { font-size: .72rem; padding: 6px 8px; }
+    .brand-mark { width: 40px; height: 40px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat:last-child { grid-column: 1 / -1; }
+    .two-fields { grid-template-columns: 1fr; gap: 0; }
+    .panel { border-radius: 15px; }
+    .record { padding: 11px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">♡</div>
+      <div>
+        <h1>PulseNote</h1>
+        <div class="subtitle">心率紀錄與趨勢觀察</div>
+      </div>
+    </div>
+    <div class="privacy-pill">🔒 資料儲存在此裝置</div>
+  </header>
+
+  <section class="welcome">
+    <h2>你好，今天也照顧好自己。</h2>
+    <p>記錄每一次測量，慢慢了解自己的日常變化。</p>
+  </section>
+
+  <section class="stats" aria-label="心率摘要">
+    <article class="stat">
+      <div class="stat-label">♡ 最近一次心率</div>
+      <div class="stat-value" id="latestValue">-- <small>bpm</small></div>
+      <div class="stat-note" id="latestDate">尚無紀錄</div>
+    </article>
+    <article class="stat">
+      <div class="stat-label">⌁ 近 7 天平均</div>
+      <div class="stat-value" id="averageValue">-- <small>bpm</small></div>
+      <div class="stat-note" id="averageNote">累積紀錄後顯示</div>
+    </article>
+    <article class="stat">
+      <div class="stat-label">▤ 近 7 天紀錄</div>
+      <div class="stat-value" id="countValue">0 <small>筆</small></div>
+      <div class="stat-note">只計算最近 7 天</div>
+    </article>
+  </section>
+
+  <div class="layout">
+    <div>
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2><span class="section-icon">＋</span>新增心率紀錄</h2>
+            <p>輸入測量結果與當時的狀態。</p>
+          </div>
+        </div>
+        <div id="formMessage" class="message" role="status" aria-live="polite"></div>
+        <form id="recordForm">
+          <div class="field">
+            <label for="bpm">心率（bpm）</label>
+            <input id="bpm" name="bpm" type="number" min="25" max="240" step="1" placeholder="例如：72" required inputmode="numeric">
+            <div class="field-hint">請輸入測量裝置顯示的每分鐘心跳次數。</div>
+          </div>
+          <div class="two-fields">
+            <div class="field">
+              <label for="measureDate">測量日期</label>
+              <input id="measureDate" name="measureDate" type="date" required>
+            </div>
+            <div class="field">
+              <label for="measureTime">測量時間</label>
+              <input id="measureTime" name="measureTime" type="time" required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="state">測量時的狀態</label>
+            <select id="state" name="state">
+              <option value="休息中">休息中</option>
+              <option value="活動後">活動後</option>
+              <option value="身體不適">身體不適</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <button class="primary-btn" type="submit">＋ 儲存紀錄</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2><span class="section-icon">♡</span>心率參考提醒</h2>
+            <p>協助理解數值，不取代醫療判斷。</p>
+          </div>
+        </div>
+        <div id="reminderBox" class="reminder neutral" aria-live="polite">
+          <div class="reminder-title"><span aria-hidden="true">ⓘ</span><span id="reminderTitle">一般參考資訊</span></div>
+          <p id="reminderText">儲存一筆紀錄後，這裡會依數值與測量狀態顯示提醒。請記得測量情境也會影響心率。</p>
+          <div class="small-note" id="reminderNote">參考範圍適用於一般成年人安靜休息時，並非所有人的個人目標。</div>
+        </div>
+        <div class="reference">
+          <strong>一般成年人安靜休息時的參考範圍</strong>
+          約為每分鐘 60–100 次（bpm）。運動、壓力、發燒、咖啡因、藥物與個人健康狀況都可能影響心率。
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2><span class="section-icon">⌁</span>近 7 天心率趨勢</h2>
+            <p>查看最近一週的測量變化。</p>
+          </div>
+        </div>
+        <div id="chartArea">
+          <div class="chart-wrap"><canvas id="trendChart" role="img" aria-label="最近七天心率趨勢折線圖">你的瀏覽器不支援 Canvas。</canvas></div>
+          <div class="chart-legend">折線呈現每日紀錄的平均值；虛線為 60–100 bpm 一般參考區間的上下界。</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2><span class="section-icon">▤</span>歷史紀錄</h2>
+            <p>查看或管理已儲存的測量資料。</p>
+          </div>
+        </div>
+        <div class="history-toolbar">
+          <span id="historyCount">共 0 筆紀錄</span>
+          <button class="secondary-btn" id="clearAllBtn" type="button">清除全部</button>
+        </div>
+        <div id="historyList" class="history-list">
+          <div class="empty">目前還沒有紀錄。<br>新增第一筆心率，開始觀察你的趨勢吧。</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>健康提醒：</strong>本工具僅供個人紀錄與一般健康資訊參考，不能診斷心律不整或其他疾病。若心率持續異常、反覆出現不適，請諮詢醫療專業人員；若伴隨胸痛、嚴重呼吸困難或昏厥等症狀，請立即尋求緊急醫療協助。請勿依本工具自行調整或停用藥物。
+  </div>
+  <footer>PulseNote · 你的紀錄保存在目前瀏覽器，不會自動上傳至雲端。</footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const STORAGE_KEY = "pulsenote_records_v1";
+  const $ = (id) => document.getElementById(id);
+  const form = $("recordForm");
+  const bpmInput = $("bpm");
+  const dateInput = $("measureDate");
+  const timeInput = $("measureTime");
+  const stateInput = $("state");
+  let records = loadRecords();
+
+  function localDateString(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  function localTimeString(date = new Date()) {
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
+  function loadRecords() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(r =>
+        r && typeof r.id === "string" &&
+        Number.isFinite(Number(r.bpm)) &&
+        typeof r.date === "string" && typeof r.time === "string"
+      );
+    } catch (error) {
+      return [];
+    }
+  }
+  function saveRecords() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      return true;
+    } catch (error) {
+      showMessage("無法儲存資料，可能是瀏覽器儲存空間受限。請確認瀏覽器設定後再試。", "error");
+      return false;
+    }
+  }
+  function showMessage(message, type) {
+    const box = $("formMessage");
+    box.textContent = message;
+    box.className = `message show ${type}`;
+  }
+  function hideMessage() {
+    $("formMessage").className = "message";
+    $("formMessage").textContent = "";
+  }
+  function recordDateTime(record) {
+    return new Date(`${record.date}T${record.time}:00`);
+  }
+  function sortedRecords(list = records) {
+    return [...list].sort((a, b) => recordDateTime(b) - recordDateTime(a));
+  }
+  function lastSevenDaysRecords() {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const start = new Date(today);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    return records.filter(r => {
+      const d = recordDateTime(r);
+      return !Number.isNaN(d.getTime()) && d >= start && d <= today;
+    });
+  }
+  function formatDate(dateStr) {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    return `${Number(parts[1])}/${Number(parts[2])}`;
+  }
+  function formatDateTime(record) {
+    return `${record.date} ${record.time}`;
+  }
+  function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[char]));
+  }
+
+  function renderStats() {
+    const sorted = sortedRecords();
+    const latest = sorted[0];
+    if (latest) {
+      $("latestValue").innerHTML = `${Math.round(Number(latest.bpm))} <small>bpm</small>`;
+      $("latestDate").textContent = formatDateTime(latest);
+    } else {
+      $("latestValue").innerHTML = '-- <small>bpm</small>';
+      $("latestDate").textContent = "尚無紀錄";
+    }
+    const recent = lastSevenDaysRecords();
+    $("countValue").innerHTML = `${recent.length} <small>筆</small>`;
+    if (recent.length) {
+      const average = recent.reduce((sum, r) => sum + Number(r.bpm), 0) / recent.length;
+      $("averageValue").innerHTML = `${Math.round(average)} <small>bpm</small>`;
+      $("averageNote").textContent = "依最近 7 天所有紀錄計算";
+    } else {
+      $("averageValue").innerHTML = '-- <small>bpm</small>';
+      $("averageNote").textContent = "最近 7 天尚無紀錄";
+    }
+  }
+
+  function renderReminder(record) {
+    const box = $("reminderBox");
+    const title = $("reminderTitle");
+    const text = $("reminderText");
+    const note = $("reminderNote");
+    box.className = "reminder neutral";
+
+    if (!record) {
+      title.textContent = "一般參考資訊";
+      text.textContent = "儲存一筆紀錄後，這裡會依數值與測量狀態顯示提醒。請記得測量情境也會影響心率。";
+      note.textContent = "參考範圍適用於一般成年人安靜休息時，並非所有人的個人目標。";
+      return;
+    }
+
+    const bpm = Number(record.bpm);
+    if (record.state === "活動後") {
+      title.textContent = "活動後的心率";
+      text.textContent = `這次記錄為 ${bpm} bpm。活動後心率可能暫時上升，請在安全、舒適的情況下休息一段時間，再觀察是否逐漸回落。`;
+      note.textContent = "一般安靜休息時的 60–100 bpm 範圍，不適合直接套用於運動當下。";
+      if (bpm < 50 || bpm > 140) box.className = "reminder caution";
+      return;
+    }
+    if (record.state === "身體不適") {
+      box.className = "reminder caution";
+      title.textContent = "請留意身體感受";
+      text.textContent = `你記錄了 ${bpm} bpm，測量時也有身體不適。單靠心率數字無法判斷原因；若不適持續、反覆發生或令你擔心，請聯絡醫療專業人員。`;
+      note.textContent = "若有胸痛、嚴重呼吸困難或昏厥等症狀，請立即尋求緊急醫療協助。";
+      return;
+    }
+    if (bpm < 60 || bpm > 100) {
+      box.className = "reminder caution";
+      title.textContent = bpm < 60 ? "低於一般參考範圍" : "高於一般參考範圍";
+      text.textContent = `這次記錄為 ${bpm} bpm，落在一般成年人安靜休息時常見參考範圍（60–100 bpm）之外。先確認自己是否真的處於休息狀態，安靜休息後可再測量一次，並留意是否持續如此。`;
+      note.textContent = "部分健康人士的靜息心率也可能低於 60；若持續異常或有症狀，請諮詢醫療專業人員。";
+    } else {
+      title.textContent = "落在一般參考範圍內";
+      text.textContent = `這次記錄為 ${bpm} bpm，落在一般成年人安靜休息時常見的 60–100 bpm 參考範圍內。持續記錄比單次數字更能幫助你了解個人變化。`;
+      note.textContent = "即使數值在範圍內，若有不舒服或心跳明顯不規則，也不應忽略症狀。";
+    }
+  }
+
+  function renderHistory() {
+    const list = $("historyList");
+    const sorted = sortedRecords();
+    $("historyCount").textContent = `共 ${records.length} 筆紀錄`;
+    if (!sorted.length) {
+      list.innerHTML = '<div class="empty">目前還沒有紀錄。<br>新增第一筆心率，開始觀察你的趨勢吧。</div>';
+      return;
+    }
+    list.innerHTML = sorted.map(record => `
+      <article class="record">
+        <div class="record-main">
+          <div class="record-top">
+            <span class="record-bpm">${Math.round(Number(record.bpm))} <small>bpm</small></span>
+            <span class="record-date">${escapeHTML(formatDateTime(record))}</span>
+          </div>
+          <div class="record-status"><span class="tag">${escapeHTML(record.state || "其他")}</span></div>
+        </div>
+        <div class="record-actions">
+          <button class="danger-btn" type="button" data-delete="${escapeHTML(record.id)}" aria-label="刪除 ${escapeHTML(formatDateTime(record))} 的紀錄">刪除</button>
+        </div>
+      </article>`).join("");
+  }
+
+  function renderChart() {
+    const canvas = $("trendChart");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = Math.max(280, rect.width || 500);
+    const cssHeight = 245;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.round(cssWidth * dpr);
+    canvas.height = Math.round(cssHeight * dpr);
+    canvas.style.height = `${cssHeight}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    const recent = lastSevenDaysRecords();
+    const today = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(today);
+      day.setDate(today.getDate() - i);
+      const date = localDateString(day);
+      const dayRecords = recent.filter(r => r.date === date);
+      const average = dayRecords.length ? dayRecords.reduce((sum, r) => sum + Number(r.bpm), 0) / dayRecords.length : null;
+      days.push({ date, label: `${day.getMonth()+1}/${day.getDate()}`, average, count: dayRecords.length });
+    }
+
+    const left = 39, right = 12, top = 16, bottom = 35;
+    const plotW = cssWidth - left - right;
+    const plotH = cssHeight - top - bottom;
+    const values = days.filter(d => d.average !== null).map(d => d.average);
+    const minVal = Math.min(40, ...(values.length ? values : [40]));
+    const maxVal = Math.max(120, ...(values.length ? values : [120]));
+    const yMin = Math.floor((minVal - 5) / 10) * 10;
+    const yMax = Math.ceil((maxVal + 5) / 10) * 10;
+    const y = value => top + (yMax - value) / (yMax - yMin || 1) * plotH;
+    const x = index => left + (days.length === 1 ? plotW/2 : index * plotW/(days.length-1));
+
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textBaseline = "middle";
+    for (let value = Math.ceil(yMin/20)*20; value <= yMax; value += 20) {
+      const yy = y(value);
+      ctx.strokeStyle = "#e9eeee";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(left, yy); ctx.lineTo(cssWidth-right, yy); ctx.stroke();
+      ctx.fillStyle = "#7b898d";
+      ctx.textAlign = "right";
+      ctx.fillText(String(value), left-9, yy);
+    }
+    [60, 100].forEach(value => {
+      if (value < yMin || value > yMax) return;
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "#d6a85a";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(cssWidth-right, y(value)); ctx.stroke();
+      ctx.restore();
+    });
+
+    days.forEach((day, i) => {
+      ctx.fillStyle = "#7b898d";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(day.label, x(i), cssHeight-bottom+10);
+    });
+
+    let segment = [];
+    function drawSegment(points) {
+      if (!points.length) return;
+      if (points.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = "#287f7b";
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = "round";
+        points.forEach((p, i) => i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py));
+        ctx.stroke();
+      }
+      points.forEach(p => {
+        ctx.beginPath();
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#287f7b";
+        ctx.lineWidth = 2.5;
+        ctx.arc(p.px, p.py, 4, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+      });
+    }
+    days.forEach((day, i) => {
+      if (day.average === null) {
+        drawSegment(segment); segment = [];
+      } else {
+        segment.push({ px: x(i), py: y(day.average) });
+      }
+    });
+    drawSegment(segment);
+
+    if (!values.length) {
+      ctx.fillStyle = "#687980";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.fillText("新增紀錄後，這裡會顯示心率趨勢", cssWidth/2, top+plotH/2);
+    }
+  }
+
+  function renderAll() {
+    renderStats();
+    renderHistory();
+    renderChart();
+    const latest = sortedRecords()[0];
+    renderReminder(latest || null);
+  }
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    hideMessage();
+    const bpm = Number(bpmInput.value);
+    const date = dateInput.value;
+    const time = timeInput.value;
+    const state = stateInput.value;
+
+    if (!bpmInput.value.trim() || !Number.isInteger(bpm) || bpm < 25 || bpm > 240) {
+      showMessage("請輸入 25–240 之間的整數心率。若測量值超出此範圍，請確認裝置讀數與輸入內容。", "error");
+      bpmInput.focus();
+      return;
+    }
+    if (!date || !time) {
+      showMessage("請完整選擇測量日期與時間。", "error");
+      return;
+    }
+    const selectedDate = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(selectedDate.getTime())) {
+      showMessage("日期或時間格式不正確，請重新選擇。", "error");
+      return;
+    }
+    const record = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      bpm, date, time, state
+    };
+    records.push(record);
+    if (!saveRecords()) {
+      records = records.filter(r => r.id !== record.id);
+      return;
+    }
+    renderAll();
+    showMessage("已儲存心率紀錄。請將提示作為參考，並留意自己的身體感受。", "success");
+    bpmInput.value = "";
+    bpmInput.focus();
+  });
+
+  $("historyList").addEventListener("click", event => {
+    const button = event.target.closest("[data-delete]");
+    if (!button) return;
+    const id = button.getAttribute("data-delete");
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+    if (!confirm(`確定要刪除 ${record.date} ${record.time} 的這筆紀錄嗎？`)) return;
+    const oldRecords = records;
+    records = records.filter(r => r.id !== id);
+    if (!saveRecords()) { records = oldRecords; return; }
+    renderAll();
+  });
+
+  $("clearAllBtn").addEventListener("click", () => {
+    if (!records.length) {
+      alert("目前沒有可清除的紀錄。");
+      return;
+    }
+    if (!confirm("確定要清除所有心率紀錄嗎？此操作無法復原。")) return;
+    const oldRecords = records;
+    records = [];
+    if (!saveRecords()) { records = oldRecords; return; }
+    renderAll();
+    showMessage("已清除全部紀錄。", "success");
+  });
+
+  window.addEventListener("resize", renderChart);
+  dateInput.value = localDateString();
+  timeInput.value = localTimeString();
+  renderAll();
+})();
+</script>
+</body>
+</html>
